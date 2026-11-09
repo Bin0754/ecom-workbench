@@ -1,0 +1,35 @@
+# dependencies / build
+node_modules/
+web/node_modules/
+web/dist/
+coverage/
+
+# runtime data: SQLite DB, uploaded originals, cutouts, generated images, job queue, exports
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# secrets / local config
+.env
+.env.*
+!.env.example
+.access_password
+
+# logs
+*.log
+npm-debug.log*
+
+# local scratch / internal result dumps (not part of the open-source repo)
+screenshots/
+screenshots_v2/
+real_results/
+prompt_v2/
+grok_results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+server.pid

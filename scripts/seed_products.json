@@ -1,0 +1,46 @@
+[
+  {
+    "sku": "LUMA-VC30",
+    "asin": "B0TESTVC30",
+    "name": "LUMA Vitamin C Serum",
+    "name_zh": "维C精华",
+    "brand": "LUMA",
+    "size_spec": "30 ml / 1 fl oz",
+    "dimensions": "H 10.5 cm × Ø 3.4 cm",
+    "ingredients": "Vitamin C 15%|Helps skin look brighter and more even\nHyaluronic Acid|Locks in moisture for a plump look\nVitamin E|Antioxidant support for skin\nFerulic Acid|Boosts collagen production",
+    "benefits": "Visibly brighter-looking skin\nLightweight, fast-absorbing\nFragrance-free formula\nSuitable for daily AM use",
+    "usage_steps": "Cleanse and pat skin dry\nApply 3-4 drops to face and neck\nGently press in until absorbed\nFollow with moisturizer and sunscreen",
+    "box_contents": "1 × 30 ml serum bottle with dropper\n1 × outer carton",
+    "angles": ["front", "back", "45deg", "texture", "package"],
+    "notes": "保留标签正面，滴管不要反光"
+  },
+  {
+    "sku": "LUMA-HB50",
+    "asin": "B0TESTHB50",
+    "name": "LUMA Hydra Barrier Cream",
+    "name_zh": "屏障保湿面霜",
+    "brand": "LUMA",
+    "size_spec": "50 ml / 1.7 fl oz",
+    "dimensions": "H 6.8 cm × Ø 7.2 cm",
+    "ingredients": "Ceramide Complex|Supports a smooth, comfortable feel\nSqualane|Lightweight, non-greasy moisture\nNiacinamide 4%|Helps skin look more even\nOat Extract|Soothing feel for dry skin",
+    "benefits": "24-hour moisture feel\nRich yet non-greasy\nFragrance-free\nTreats eczema-prone skin",
+    "usage_steps": "Scoop a pea-sized amount\nWarm between fingertips\nPress onto face and neck\nUse morning and night",
+    "box_contents": "1 × 50 ml cream jar\n1 × spatula\n1 × outer carton",
+    "angles": ["front", "45deg", "texture", "package"],
+    "notes": "银色盖子容易反光，注意布光"
+  },
+  {
+    "sku": "LUMA-GC120",
+    "asin": "B0TESTGC12",
+    "name": "LUMA Gentle Foam Cleanser",
+    "name_zh": "温和洁面泡沫",
+    "brand": "LUMA",
+    "size_spec": "120 ml / 4 fl oz",
+    "dimensions": "H 16 cm × W 5.2 cm",
+    "ingredients": "Amino Acid Surfactants|Gentle, low-foam cleanse\nGreen Tea Extract|Fresh feel after rinsing\nGlycerin|Leaves skin feeling soft",
+    "benefits": "Gentle daily cleanse\npH-balanced formula\nRinses clean without tightness\nSuitable for all skin types",
+    "usage_steps": "Wet face with lukewarm water\nLather a small amount in palms\nMassage gently for 30 seconds\nRinse thoroughly",
+    "box_contents": "1 × 120 ml tube",
+    "angles": ["front", "back", "package"]
+  }
+]

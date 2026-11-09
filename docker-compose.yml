@@ -1,0 +1,19 @@
+# docker compose up -d   →  http://localhost:5180
+# Put settings (WB_ACCESS_PASSWORD, optional model keys…) in .env next to this file (see .env.example).
+services:
+  workbench:
+    build: .
+    image: ecom-workbench:latest
+    restart: unless-stopped
+    ports:
+      - '${PORT:-5180}:5180'
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 5180
+      WB_DATA_DIR: /data
+    volumes:
+      - workbench-data:/data
+volumes:
+  workbench-data:

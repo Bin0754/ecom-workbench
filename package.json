@@ -1,0 +1,61 @@
+{
+  "name": "ecom-workbench",
+  "version": "0.1.0",
+  "description": "Product-image workbench for Amazon sellers: phone upload → auto white-background/infographic/lifestyle templates on an infinite canvas → designer refine → reviewer approve → Amazon-ready export. Pluggable image-model adapters (OpenAI, fal, generic HTTP, ComfyUI, manual import).",
+  "private": true,
+  "license": "MIT",
+  "author": "Evan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bin0754/ecom-workbench.git"
+  },
+  "homepage": "https://github.com/Bin0754/ecom-workbench#readme",
+  "bugs": {
+    "url": "https://github.com/Bin0754/ecom-workbench/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "keywords": [
+    "amazon",
+    "ecommerce",
+    "product-photography",
+    "image-generation",
+    "comfyui",
+    "react-flow",
+    "gpt-image"
+  ],
+  "scripts": {
+    "postinstall": "npm --prefix web install --no-audit --no-fund",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm --prefix web run build",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "seed": "node scripts/seed-demo.mjs",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "@imgly/background-removal-node": "^1.4.5",
+    "archiver": "^8.0.0",
+    "express": "^5.3.0",
+    "multer": "^2.5.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.17.3": true,
+    "sharp@0.32.6": true,
+    "sharp@0.35.5": true
+  }
+}

@@ -1,0 +1,16 @@
+node_modules
+web/node_modules
+web/dist
+data
+.env
+.env.*
+!.env.example
+.access_password
+*.log
+server.pid
+.git
+screenshots
+screenshots_v2
+real_results
+prompt_v2
+grok_results
