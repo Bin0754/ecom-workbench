@@ -25,12 +25,13 @@ import {
 } from 'lucide-react';
 import { api, uploadRaw } from '../api.js';
 import { useApp, go } from '../App.jsx';
+import { t, tx } from '../i18n.js';
 import { Badge, Button, Empty, Precheck, PrecheckBadge, StatusBadge, STATUS, PRODUCT_TONE, PromptEditor, PromptPreview } from '../ui.jsx';
 
 const KIND = {
-  white: { I: Square, cls: 'k-white', label: '抠图 · 纯白合成' },
-  solid: { I: LayoutTemplate, cls: 'k-layout', label: '排版 · 不调模型' },
-  generate: { I: Sparkles, cls: 'k-gen', label: '模型背景 · 原图贴回' },
+  white: { I: Square, cls: 'k-white', label: t('cv.kind.white') },
+  solid: { I: LayoutTemplate, cls: 'k-layout', label: t('cv.kind.solid') },
+  generate: { I: Sparkles, cls: 'k-gen', label: t('cv.kind.gen') },
 };
 const DOT = { success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)', info: 'var(--info)', neutral: 'var(--text-3)' };
 
@@ -45,7 +46,7 @@ function SourceNode({ data }) {
         </span>
       </div>
       <div className="xs muted" style={{ padding: '0 4px 2px' }}>
-        原片 · {data.uses} 个模板
+        {t('cv.src.uses', { n: data.uses })}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
@@ -64,7 +65,7 @@ function TemplateNode({ data }) {
           <k.I size={14} strokeWidth={2} />
         </span>
         <div className="tt">
-          <b>{n.tname}</b>
+          <b>{tx(n.tname)}</b>
           <span className="mono">
             {n.template_id} · {n.width}×{n.height}
           </span>
@@ -77,7 +78,7 @@ function TemplateNode({ data }) {
           {n.spec.bg === 'generate' && (
             <span className="node-chip">
               <Cpu size={11} />
-              {prov?.id === 'grok' ? 'Grok 生图 · 外部导入' : prov?.id === 'mock' ? '模拟' : prov?.name || n.provider_id}
+              {prov?.id === 'grok' ? t('prov.grok') : prov?.id === 'mock' ? t('lib.mock') : tx(prov?.name) || n.provider_id}
             </span>
           )}
         </div>
@@ -113,10 +114,10 @@ function OutputNode({ data }) {
       </div>
       <div className="foot">
         <PrecheckBadge pc={o?.precheck} />
-        <span className="xs muted">{data.count} 个版本</span>
+        <span className="xs muted">{t('cv.versions', { n: data.count })}</span>
       </div>
-      {o?.status === 'rejected' && <div className="err">打回：{o.reviews[0]?.reasons.join('、')}</div>}
-      {o?.status === 'failed' && <div className="err">{o.error}</div>}
+      {o?.status === 'rejected' && <div className="err">{t('cv.rejectedFor', { list: (o.reviews[0]?.reasons || []).map(tx).join(t('common.listSep')) })}</div>}
+      {o?.status === 'failed' && <div className="err">{tx(o.error)}</div>}
     </div>
   );
 }
@@ -132,7 +133,7 @@ function AwaitingImport({ o, reload, notify }) {
     setBusy(true);
     try {
       await uploadRaw(`/api/grok/import/${o.id}`, f);
-      notify('已导入，正在合成');
+      notify(t('cv.imported'));
       reload();
     } catch (err) {
       notify(err.message, true);
@@ -142,26 +143,28 @@ function AwaitingImport({ o, reload, notify }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(o.prompt || '');
-      notify('提示词已复制');
+      notify(t('cv.copied'));
     } catch {
-      notify('复制失败，请展开下方提示词手动复制', true);
+      notify(t('cv.copyFail'), true);
     }
   };
   return (
     <div className="callout t-info" style={{ marginBottom: 12, display: 'block' }}>
       <div className="sm" style={{ marginBottom: 8 }}>
-        <b>等待外部出图</b>：用参考构图图 + 提示词在 Grok（或任意生图工具）里生成背景，再把结果导入，系统会自动贴回商品原图并合成。
+        <b>{t('cv.await.title')}</b>
+        {t('cv.await.desc')}
       </div>
       <div className="row wrap" style={{ gap: 8 }}>
         <a className="btn s-sm v-secondary" href={`/api/grok/jobs/${o.id}/ref.png`} target="_blank" rel="noreferrer" download={`ref_${o.id}.png`}>
           <ImageIcon size={14} />
-          参考构图图
+          {t('cv.await.ref')}
         </a>
         <Button size="sm" icon={Copy} onClick={copy}>
-          复制提示词
+          {t('cv.await.copy')}
         </Button>
         <label className="btn s-sm v-primary" style={{ cursor: 'pointer' }}>
-          {busy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}导入背景图
+          {busy ? <Loader2 size={14} className="spin" /> : <Upload size={14} />}
+          {t('cv.await.import')}
           <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onFile} disabled={busy} />
         </label>
       </div>
@@ -195,9 +198,9 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
       await api('/api/nodes/' + n.id, { method: 'PUT', body: { prompt, provider_id: provider, source_id: Number(source), params } });
       if (regen) {
         await api(`/api/nodes/${n.id}/generate`, { method: 'POST' });
-        notify('已开始生成新版本');
+        notify(t('cv.genStarted'));
         setTab('versions');
-      } else notify('已保存');
+      } else notify(t('set.saved'));
       reload();
     } catch (e) {
       notify(e.message, true);
@@ -207,7 +210,7 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
   const submit = async () => {
     try {
       await api(`/api/outputs/${o.id}/submit`, { method: 'POST' });
-      notify('已提交审核');
+      notify(t('cv.submitted'));
       reload();
     } catch (e) {
       notify(e.message, true);
@@ -232,12 +235,12 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
           </span>
         </span>
         <div className="grow">
-          <h3>{n.tname}</h3>
+          <h3>{tx(n.tname)}</h3>
           <div className="xs muted mono">
-            {n.template_id} · {n.width}×{n.height} · 亚马逊位置 {n.slot}
+            {n.template_id} · {n.width}×{n.height} · {t('cv.slot', { slot: n.slot })}
           </div>
         </div>
-        <button className="icon-btn" onClick={onClose} aria-label="关闭">
+        <button className="icon-btn" onClick={onClose} aria-label={t('ui.close')}>
           <X size={17} />
         </button>
       </div>
@@ -245,15 +248,15 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
         <div className="seg block">
           <button className={tab === 'edit' ? 'on' : ''} onClick={() => setTab('edit')}>
             <Wand2 size={14} />
-            编辑
+            {t('cv.tab.edit')}
           </button>
           <button className={tab === 'versions' ? 'on' : ''} onClick={() => setTab('versions')}>
             <History size={14} />
-            版本 {n.outputs.length}
+            {t('cv.tab.versions', { n: n.outputs.length })}
           </button>
           <button className={tab === 'check' ? 'on' : ''} onClick={() => setTab('check')}>
             <ShieldCheck size={14} />
-            预检
+            {t('cv.tab.check')}
           </button>
         </div>
       </div>
@@ -261,7 +264,7 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
         {tab === 'edit' && (
           <>
             <label className="field">
-              <span className="label">原片</span>
+              <span className="label">{t('rv.view.src')}</span>
               <select value={source} onChange={(e) => setSource(e.target.value)}>
                 {d.sources.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -274,28 +277,29 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
               <>
                 <label className="field">
                   <span className="label">
-                    生图模型<em>仅本节点</em>
+                    {t('cv.model')}
+                    <em>{t('cv.model.hint')}</em>
                   </span>
                   <select value={provider} onChange={(e) => setProvider(e.target.value)}>
                     {providers.map((p) => (
                       <option key={p.id} value={p.id} disabled={!p.enabled}>
-                        {p.name}
-                        {!p.enabled ? '（未启用）' : ''}
+                        {tx(p.name)}
+                        {!p.enabled ? t('cv.notEnabled') : ''}
                       </option>
                     ))}
                   </select>
                 </label>
-                <PromptEditor value={prompt} onChange={setPrompt} hint={n.prompt ? '本节点已改写' : '来自模板 v2'} />
+                <PromptEditor value={prompt} onChange={setPrompt} hint={n.prompt ? t('cv.prompt.custom') : t('cv.prompt.tpl')} />
                 <PromptPreview text={n.resolvedPrompt} />
                 <div className="grid-2">
-                  {P('palette', '色调', '自动：按成分推导')}
-                  {P('scene', '场景', 'marble vanity counter')}
-                  {P('texture', '质地', '自动：按品类')}
-                  {P('mood', '氛围', '自动：按卖点')}
+                  {P('palette', t('cv.p.palette'), t('cv.p.palette.ph'))}
+                  {P('scene', t('cv.p.scene'), 'marble vanity counter')}
+                  {P('texture', t('cv.p.texture'), t('cv.p.texture.ph'))}
+                  {P('mood', t('cv.p.mood'), t('cv.p.mood.ph'))}
                   <label className="field">
-                    <span className="label">质量</span>
+                    <span className="label">{t('cv.p.quality')}</span>
                     <select value={params.quality || ''} onChange={(e) => setParams({ ...params, quality: e.target.value || undefined })}>
-                      <option value="">跟随通道</option>
+                      <option value="">{t('cv.p.quality.auto')}</option>
                       {['low', 'medium', 'high'].map((x) => (
                         <option key={x}>{x}</option>
                       ))}
@@ -306,21 +310,17 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
             ) : (
               <div className="callout t-neutral" style={{ marginBottom: 16 }}>
                 <Layers size={15} />
-                <span>
-                  {n.spec.bg === 'white'
-                    ? '主图走确定性流程：本地抠图后合成纯白底，商品占 85%，不调用生图模型。'
-                    : '此模板只做排版，不调用生图模型，商品像素原样保留。'}
-                </span>
+                <span>{n.spec.bg === 'white' ? t('cv.white.info') : t('cv.layout.info')}</span>
               </div>
             )}
             {n.spec.layout && n.spec.layout !== 'none' && (
               <>
                 <div className="section-title" style={{ marginTop: 8 }}>
-                  画面文案 · 排版引擎叠加
+                  {t('cv.copy')}
                 </div>
-                {P('headline', '标题', n.texts.headline)}
-                {P('sub', '副标题', n.texts.sub)}
-                {P('items', '条目（每行一条）', n.texts.items.join('\n'), true)}
+                {P('headline', t('cv.p.headline'), n.texts.headline)}
+                {P('sub', t('cv.p.sub'), n.texts.sub)}
+                {P('items', t('cv.p.items'), n.texts.items.join('\n'), true)}
               </>
             )}
           </>
@@ -329,7 +329,7 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
           <>
             <div className="versions">
               {n.outputs.map((x) => {
-                const t = (STATUS[x.status] || [])[1];
+                const tone = (STATUS[x.status] || [])[1];
                 return (
                   <button key={x.id} className={'ver' + (x.id === o?.id ? ' on' : '')} onClick={() => setVer(x.id)}>
                     <span className="vi">
@@ -344,7 +344,7 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
                       )}
                     </span>
                     <span>
-                      <i className="vdot" style={{ background: DOT[t] }} />v{x.version}
+                      <i className="vdot" style={{ background: DOT[tone] }} />v{x.version}
                     </span>
                   </button>
                 );
@@ -362,37 +362,37 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
                   <PrecheckBadge pc={o.precheck} />
                 </div>
                 <dl className="kv">
-                  <dt>通道</dt>
+                  <dt>{t('set.c.channel')}</dt>
                   <dd>
                     {o.provider_id}
-                    {o.model ? ` / ${o.model}` : ''}
+                    {o.model ? ` / ${tx(o.model)}` : ''}
                   </dd>
-                  <dt>耗时</dt>
-                  <dd>{o.duration_ms ? (o.duration_ms / 1000).toFixed(1) + ' 秒' : '–'}</dd>
-                  <dt>生成人</dt>
+                  <dt>{t('set.c.dur')}</dt>
+                  <dd>{o.duration_ms ? t('cv.sec', { s: (o.duration_ms / 1000).toFixed(1) }) : '–'}</dd>
+                  <dt>{t('cv.by')}</dt>
                   <dd>{o.created_by}</dd>
-                  <dt>时间</dt>
+                  <dt>{t('set.c.time')}</dt>
                   <dd>{o.created_at}</dd>
                 </dl>
                 {o.error && (
                   <div className="callout t-danger" style={{ marginBottom: 12 }}>
                     <AlertTriangle size={15} />
-                    {o.error}
+                    {tx(o.error)}
                   </div>
                 )}
                 {o.status === 'awaiting' && <AwaitingImport o={o} reload={reload} notify={notify} />}
                 {o.reviews.map((r) => (
                   <div key={r.id} className={'review-log ' + r.result}>
-                    <b>{r.result === 'rejected' ? '打回' : '通过'}</b>
+                    <b>{r.result === 'rejected' ? t('rv.reject') : t('rv.approve')}</b>
                     <span>
-                      {r.reviewer} · {r.reasons.join('、')} {r.comment}
+                      {r.reviewer} · {r.reasons.map(tx).join(t('common.listSep'))} {tx(r.comment)}
                     </span>
                   </div>
                 ))}
                 {o.prompt && (
                   <details>
                     <summary className="sm muted" style={{ cursor: 'pointer', margin: '8px 0' }}>
-                      这一版的提示词
+                      {t('cv.thisPrompt')}
                     </summary>
                     <div className="preview-box" style={{ margin: 0 }}>
                       {o.prompt}
@@ -403,25 +403,25 @@ function Inspector({ n, d, providers, reload, notify, onClose }) {
             )}
           </>
         )}
-        {tab === 'check' && (o?.precheck ? <Precheck pc={o.precheck} /> : <div className="sm muted">还没有可预检的版本。</div>)}
+        {tab === 'check' && (o?.precheck ? <Precheck pc={o.precheck} /> : <div className="sm muted">{t('cv.noCheck')}</div>)}
       </div>
       <div className="insp-foot">
         {tab === 'edit' ? (
           <>
             <Button icon={Save} loading={busy} onClick={() => save(false)}>
-              保存
+              {t('common.save')}
             </Button>
             <Button variant="primary" icon={RefreshCw} loading={busy} onClick={() => save(true)}>
-              保存并重新生成
+              {t('cv.saveRegen')}
             </Button>
           </>
         ) : o?.status === 'draft' ? (
           <Button variant="primary" icon={Send} onClick={submit}>
-            提交 v{o.version} 去审核
+            {t('cv.submit', { v: o.version })}
           </Button>
         ) : (
           <Button variant="primary" icon={RefreshCw} onClick={() => save(true)}>
-            重新生成新版本
+            {t('cv.regen')}
           </Button>
         )}
       </div>
@@ -453,8 +453,8 @@ export default function CanvasPage({ arg }) {
   const generating = d?.nodes.some((n) => n.outputs[0]?.status === 'generating');
   useEffect(() => {
     if (!generating) return;
-    const t = setInterval(load, 2000);
-    return () => clearInterval(t);
+    const timer = setInterval(load, 2000);
+    return () => clearInterval(timer);
   }, [generating, load]);
 
   const graph = useMemo(() => {
@@ -470,12 +470,12 @@ export default function CanvasPage({ arg }) {
           s,
           used: d.nodes.some((n) => n.source_id === s.id),
           uses: d.nodes.filter((n) => n.source_id === s.id).length,
-          label: meta.angles.find((a) => a.id === s.angle)?.label.replace(/（.*）/, ''),
+          label: tx(meta.angles.find((a) => a.id === s.angle)?.label || s.angle).replace(/（.*）| \(.*\)/, ''),
         },
       }),
     );
     d.nodes.forEach((n, i) => {
-      // 默认 3 列网格：每格是「模板 → 结果」一对；可拖动，位置会保存
+      // Default 3-column grid: each cell is a template → result pair; draggable, positions are saved
       const col = i % 3,
         row = Math.floor(i / 3),
         x = 260 + col * 590,
@@ -519,7 +519,7 @@ export default function CanvasPage({ arg }) {
   const all = async (what) => {
     try {
       const r = await api(`/api/products/${arg}/${what}`, { method: 'POST' });
-      notify(what === 'submit-all' ? `已提交 ${r.submitted} 张草稿去审核` : `已开始生成 ${r.started} 个节点`);
+      notify(what === 'submit-all' ? t('cv.submittedN', { n: r.submitted }) : t('cv.startedN', { n: r.started }));
       load();
     } catch (e) {
       notify(e.message, true);
@@ -533,94 +533,99 @@ export default function CanvasPage({ arg }) {
         <div className="card" style={{ marginTop: 12 }}>
           <Empty
             icon={Monitor}
-            title="画布需要在电脑上使用"
+            title={t('cv.mobile.title')}
             action={
               <div className="row" style={{ gap: 8 }}>
-                <Button onClick={() => go('tasks')}>任务单</Button>
+                <Button onClick={() => go('tasks')}>{t('nav.tasks')}</Button>
                 <Button variant="primary" onClick={() => go('library')}>
-                  素材库
+                  {t('nav.library')}
                 </Button>
               </div>
             }
           >
-            无限画布需要较大的屏幕来编辑节点和提示词。手机上可以使用拍摄上传、审核和素材库。
+            {t('cv.mobile.desc')}
           </Empty>
         </div>
       </div>
       <div className="cv desktop-only">
         <div className="cv-toolbar">
           <select className="input" value={arg || ''} onChange={(e) => go('canvas/' + e.target.value)}>
-            <option value="">选择款号…</option>
-            {(tasks || []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.sku} · {t.name_zh || t.name}
+            <option value="">{t('cv.pickSku')}</option>
+            {(tasks || []).map((tk) => (
+              <option key={tk.id} value={tk.id}>
+                {tk.sku} · {tk.name_zh || tk.name}
               </option>
             ))}
           </select>
           {d && (
             <>
               <Badge tone={PRODUCT_TONE[d.status.code]} dot>
-                {d.status.label}
+                {tx(d.status.label)}
               </Badge>
               <span className="div" />
-              <span className="cv-stat" title="原片 / 模板">
+              <span className="cv-stat" title={t('cv.stat.title')}>
                 <Layers size={14} />
-                <b>{d.nodes.length}</b>个模板
+                <b>{d.nodes.length}</b>
+                {t('cv.stat.tpl')}
               </span>
               <span className="cv-stat">
                 <i className="vdot" style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--text-3)', display: 'inline-block' }} />
-                <b>{cnt('draft')}</b>草稿
+                <b>{cnt('draft')}</b>
+                {t('st.draft')}
               </span>
               <span className="cv-stat">
                 <i style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--warning)', display: 'inline-block' }} />
-                <b>{cnt('pending')}</b>待审
+                <b>{cnt('pending')}</b>
+                {t('cv.stat.pending')}
               </span>
               <span className="cv-stat">
                 <i style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--success)', display: 'inline-block' }} />
-                <b>{cnt('approved')}</b>通过
+                <b>{cnt('approved')}</b>
+                {t('st.approved')}
               </span>
               {cnt('rejected') > 0 && (
                 <span className="cv-stat">
                   <i style={{ width: 7, height: 7, borderRadius: 4, background: 'var(--danger)', display: 'inline-block' }} />
-                  <b>{cnt('rejected')}</b>打回
+                  <b>{cnt('rejected')}</b>
+                  {t('st.rejected')}
                 </span>
               )}
               <span className="grow" />
-              <Button size="sm" variant="ghost" icon={Plus} title="按已上传角度补齐缺少的模板节点" onClick={() => all('ensure')}>
-                补齐
+              <Button size="sm" variant="ghost" icon={Plus} title={t('cv.ensure.title')} onClick={() => all('ensure')}>
+                {t('cv.ensure')}
               </Button>
-              <Button size="sm" icon={RefreshCw} onClick={() => confirm('所有节点各生成一个新版本？') && all('generate-all')}>
-                全部重新生成
+              <Button size="sm" icon={RefreshCw} onClick={() => confirm(t('cv.regenAll.confirm')) && all('generate-all')}>
+                {t('cv.regenAll')}
               </Button>
               <Button size="sm" variant="primary" icon={Send} onClick={() => all('submit-all')}>
-                提交全部草稿
+                {t('cv.submitAll')}
               </Button>
             </>
           )}
         </div>
         {!arg ? (
           <div className="card">
-            <Empty icon={Layers} title="选择一个款号">
-              从左上角下拉框选择款号，查看它的出图画布。
+            <Empty icon={Layers} title={t('cv.pick.title')}>
+              {t('cv.pick.desc')}
             </Empty>
           </div>
         ) : !d ? (
           <div className="card">
-            <Empty icon={Loader2} title="加载中…" />
+            <Empty icon={Loader2} title={t('app.loading')} />
           </div>
         ) : !d.nodes.length ? (
           <div className="card">
-            <Empty icon={Camera} title="还没有原片">
-              摄影上传原片后，系统会自动铺好画布并开始出图。
+            <Empty icon={Camera} title={t('cv.nosrc.title')}>
+              {t('cv.nosrc.desc')}
             </Empty>
           </div>
         ) : (
           <div className="cv-body">
             <div className="cv-flow">
               <div className="cv-legend">
-                <Badge icon={Square}>纯白合成</Badge>
-                <Badge icon={LayoutTemplate}>排版</Badge>
-                <Badge icon={Sparkles}>模型背景</Badge>
+                <Badge icon={Square}>{t('set.bg.white')}</Badge>
+                <Badge icon={LayoutTemplate}>{t('set.bg.solid')}</Badge>
+                <Badge icon={Sparkles}>{t('cv.legend.gen')}</Badge>
               </div>
               <ReactFlow
                 nodes={rfNodes}

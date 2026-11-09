@@ -18,9 +18,10 @@ import {
 } from 'lucide-react';
 import { api, uploadXHR, compressImage, fmtBytes } from '../api.js';
 import { useApp, go } from '../App.jsx';
+import { t, tx } from '../i18n.js';
 import { AngleGlyph, Badge, Button, Empty, PageHeader, Progress, SkeletonList } from '../ui.jsx';
 
-// 文件名解析：款号_角度_序号，例如 LUMA-VC30_front_01.jpg / LUMA-VC30_正面_1.jpg
+// File-name parsing: SKU_angle_nn, e.g. LUMA-VC30_front_01.jpg / LUMA-VC30_正面_1.jpg (Chinese angle names work too)
 const ALIAS = {
   front: ['front', 'f', '正面', 'zm'],
   back: ['back', 'b', '背面', 'bm'],
@@ -46,7 +47,7 @@ const slow = () => {
   const c = navigator.connection;
   return !!(c && (c.saveData || /2g|3g/.test(c.effectiveType || '')));
 };
-const short = (l) => l?.replace(/（.*）/, '');
+const short = (l) => tx(l)?.replace(/（.*）| \(.*\)/, '');
 
 export default function Upload({ arg }) {
   const { meta, notify } = useApp();
@@ -72,31 +73,29 @@ export default function Upload({ arg }) {
   if (!arg)
     return (
       <div className="fade-in">
-        <PageHeader eyebrow="拍摄上传" title="选择款号" desc="选一个款号开始拍摄，按角度格子逐个拍照即可。" />
+        <PageHeader eyebrow={t('nav.upload')} title={t('up.pick.title')} desc={t('up.pick.desc')} />
         {!tasks ? (
           <SkeletonList n={3} h={72} />
         ) : !tasks.length ? (
           <div className="card">
-            <Empty icon={Inbox} title="暂无拍摄任务">
-              等运营或美工建好任务单后，会出现在这里。
+            <Empty icon={Inbox} title={t('up.none.title')}>
+              {t('up.none.desc')}
             </Empty>
           </div>
         ) : (
           <div className="pick-list">
-            {tasks.map((t) => {
-              const need = t.angles.length || 1,
-                shot = t.angles.filter((a) => t.shotAngles.includes(a)).length;
+            {tasks.map((tk) => {
+              const need = tk.angles.length || 1,
+                shot = tk.angles.filter((a) => tk.shotAngles.includes(a)).length;
               return (
-                <button key={t.id} className="card pick" onClick={() => go('upload/' + t.id)}>
-                  <div className="thumb">{t.cover ? <img src={t.cover} alt="" /> : <Camera size={20} strokeWidth={1.6} />}</div>
+                <button key={tk.id} className="card pick" onClick={() => go('upload/' + tk.id)}>
+                  <div className="thumb">{tk.cover ? <img src={tk.cover} alt="" /> : <Camera size={20} strokeWidth={1.6} />}</div>
                   <div className="grow">
                     <div className="row">
-                      <b>{t.sku}</b>
-                      <Badge tone={shot === need ? 'success' : 'warning'}>
-                        {shot}/{need} 角度
-                      </Badge>
+                      <b>{tk.sku}</b>
+                      <Badge tone={shot === need ? 'success' : 'warning'}>{t('up.angles', { shot, need })}</Badge>
                     </div>
-                    <div className="sm text-2 ellipsis">{t.name_zh || t.name}</div>
+                    <div className="sm text-2 ellipsis">{tk.name_zh || tk.name}</div>
                     <Progress value={shot / need} tone={shot === need ? 'success' : 'accent'} />
                   </div>
                   <ChevronRight size={18} className="muted" />
@@ -118,12 +117,12 @@ export default function Upload({ arg }) {
   async function send(file, angle) {
     const id = Math.random().toString(36).slice(2);
     const preview = URL.createObjectURL(file);
-    setJobs((js) => [{ id, name: file.name, angle, size: file.size, progress: 0, state: '准备中', preview }, ...js]);
+    setJobs((js) => [{ id, name: file.name, angle, size: file.size, progress: 0, state: t('up.job.prep'), preview }, ...js]);
     try {
       if (saver && file.size > 600 * 1024) {
-        setJob(id, { state: '压缩中…' });
+        setJob(id, { state: t('up.job.compress') });
         const c = await compressImage(file);
-        setJob(id, { state: `上传压缩版 ${fmtBytes(c.blob.size)}` });
+        setJob(id, { state: t('up.job.preview', { size: fmtBytes(c.blob.size) }) });
         const f = new FormData();
         f.append('productId', d.product.id);
         f.append('angle', angle);
@@ -132,7 +131,7 @@ export default function Upload({ arg }) {
         f.append('file', c.blob, file.name.replace(/\.[^.]+$/, '') + '_preview.jpg');
         const r = await uploadXHR('/api/upload', f, { onProgress: (p, msg) => setJob(id, { progress: p * 0.5, ...(msg ? { state: msg } : {}) }) });
         load();
-        setJob(id, { state: '已开始出图，后台补传原图…' });
+        setJob(id, { state: t('up.job.started') });
         const o = new FormData();
         o.append('file', file, file.name);
         await uploadXHR(`/api/sources/${r.source.id}/original`, o, {
@@ -145,12 +144,14 @@ export default function Upload({ arg }) {
         f.append('angle', angle);
         f.append('originalName', file.name);
         f.append('file', file, file.name);
-        await uploadXHR('/api/upload', f, { onProgress: (p, msg) => setJob(id, { progress: p, state: msg || `上传中 ${Math.round(p * 100)}%` }) });
+        await uploadXHR('/api/upload', f, {
+          onProgress: (p, msg) => setJob(id, { progress: p, state: msg || t('up.job.uploading', { p: Math.round(p * 100) }) }),
+        });
       }
-      setJob(id, { progress: 1, state: '完成', ok: true });
+      setJob(id, { progress: 1, state: t('up.job.done'), ok: true });
       load();
     } catch (e) {
-      setJob(id, { state: '失败：' + e.message, bad: true, retry: () => send(file, angle) });
+      setJob(id, { state: t('up.job.failed', { e: tx(e.message) }), bad: true, retry: () => send(file, angle) });
     }
   }
   const onPick = (angle) => (e) => {
@@ -162,7 +163,7 @@ export default function Upload({ arg }) {
     for (const f of e.target.files) {
       const p = parseName(f.name, d.product);
       if (p.angle && p.skuOk) send(f, p.angle);
-      else bad.push({ f, angle: p.angle || '', why: !p.skuOk ? '文件名里没有本款号' : '认不出角度' });
+      else bad.push({ f, angle: p.angle || '', why: !p.skuOk ? t('up.why.sku') : t('up.why.angle') });
     }
     if (bad.length) setUnsorted((u) => [...u, ...bad]);
     e.target.value = '';
@@ -173,7 +174,7 @@ export default function Upload({ arg }) {
     <div className="upload fade-in">
       <button className="btn v-ghost s-sm" style={{ marginBottom: 8, marginLeft: -8 }} onClick={() => go('upload')}>
         <ArrowLeft size={15} />
-        <span>全部款号</span>
+        <span>{t('up.allSkus')}</span>
       </button>
       <div className="card up-hero">
         <div className="top">
@@ -185,9 +186,9 @@ export default function Upload({ arg }) {
           <div className="grow">
             <h1 style={{ fontSize: 20 }}>{d.product.sku}</h1>
             <div className="sm text-2 ellipsis">{d.product.name_zh || d.product.name}</div>
-            <div className="xs muted mono">ASIN {d.product.asin || '未填'}</div>
+            <div className="xs muted mono">ASIN {d.product.asin || t('up.notSet')}</div>
           </div>
-          <Badge tone={done === req.length ? 'success' : 'warning'}>{done === req.length ? '必拍已齐' : `还差 ${req.length - done} 个`}</Badge>
+          <Badge tone={done === req.length ? 'success' : 'warning'}>{done === req.length ? t('up.complete') : t('up.left', { n: req.length - done })}</Badge>
         </div>
         {d.task?.notes && (
           <div className="callout t-warning up-note">
@@ -203,27 +204,30 @@ export default function Upload({ arg }) {
           <span className="grow">
             <span className="t">
               <Wifi size={14} />
-              省流量模式
+              {t('up.saver')}
             </span>
-            <span className="d">先传压缩图立即出图，原图后台补传{slow() ? ' · 检测到网络较慢' : ''}</span>
+            <span className="d">
+              {t('up.saver.desc')}
+              {slow() ? t('up.saver.slow') : ''}
+            </span>
           </span>
         </label>
       </div>
 
       <div className="slots-title">
-        <h2>拍摄角度</h2>
-        <span className="xs muted">点格子直接调用相机</span>
+        <h2>{t('up.slots')}</h2>
+        <span className="xs muted">{t('up.slots.hint')}</span>
       </div>
       <div className="slots">
         {slots.map((a) => {
           const list = byAngle(a);
           const last = list[list.length - 1];
           const must = req.includes(a);
-          const label = meta.angles.find((x) => x.id === a)?.label;
+          const label = tx(meta.angles.find((x) => x.id === a)?.label);
           const job = jobs.find((j) => j.angle === a && !j.ok && !j.bad);
           return (
             <div key={a} className={'slot' + (last ? ' filled' : '') + (must ? ' must' : ' opt')}>
-              <button className="slot-btn" onClick={() => pickRef.current[a].click()} aria-label={`拍摄${label}`}>
+              <button className="slot-btn" onClick={() => pickRef.current[a].click()} aria-label={t('up.shootAria', { label })}>
                 {last ? (
                   <img className="shot" src={last.thumb} alt={label} />
                 ) : (
@@ -231,19 +235,20 @@ export default function Upload({ arg }) {
                     <AngleGlyph angle={a} size={54} />
                     <span className="cta">
                       <Camera size={13} />
-                      {must ? '拍摄' : '选拍'}
+                      {must ? t('up.shoot') : t('up.optional')}
                     </span>
                   </span>
                 )}
                 {must && !last && (
                   <span className="tag">
-                    <Badge tone="accent">必拍</Badge>
+                    <Badge tone="accent">{t('up.required')}</Badge>
                   </span>
                 )}
                 {last && (
                   <span className="tag">
                     <Badge tone="neutral" className="solid-dark">
-                      {list.length} 张{last.original_received ? '' : ' · 原图补传中'}
+                      {t('up.count', { n: list.length })}
+                      {last.original_received ? '' : t('up.origPending')}
                     </Badge>
                   </span>
                 )}
@@ -263,18 +268,18 @@ export default function Upload({ arg }) {
               <div className="slot-foot">
                 <div className="grow">
                   <div className="name ellipsis">{short(label)}</div>
-                  {label !== short(label) && <div className="sub ellipsis">{label.match(/（(.*)）/)?.[1]}</div>}
+                  {label !== short(label) && <div className="sub ellipsis">{((m) => m?.[1] || m?.[2])(label.match(/（(.*)）| \((.*)\)/))}</div>}
                 </div>
-                <label className="fromalbum" title="从相册选">
+                <label className="fromalbum" title={t('up.album.title')}>
                   <ImagePlus size={14} />
-                  相册
+                  {t('up.album')}
                   <input type="file" accept="image/*" multiple hidden onChange={onPick(a)} />
                 </label>
               </div>
               {last?.warnings?.map((w, i) => (
                 <div key={i} className="slot-warn">
                   <AlertTriangle size={12} style={{ flex: 'none', marginTop: 2 }} />
-                  {w}
+                  {tx(w)}
                 </div>
               ))}
             </div>
@@ -285,25 +290,28 @@ export default function Upload({ arg }) {
       <div className="card panel bulk">
         <div className="panel-head">
           <div>
-            <h3>批量上传</h3>
-            <div className="xs muted">按文件名自动归位到角度</div>
+            <h3>{t('up.bulk')}</h3>
+            <div className="xs muted">{t('up.bulk.hint')}</div>
           </div>
           <label className="btn v-secondary s-md">
             <FolderUp size={16} />
-            <span>选择文件</span>
+            <span>{t('up.bulk.pick')}</span>
             <input type="file" accept="image/*" multiple hidden onChange={onBulk} />
           </label>
         </div>
         <div className="xs muted">
-          文件名格式 <code>{d.product.sku}_角度_序号.jpg</code>，角度可写 front / back / 45 / texture / package，或 正面 / 背面 / 质地 /
-          包装。认不出的会进入待分拣。
+          {t('up.bulk.fmt1')}{' '}
+          <code>
+            {d.product.sku}_{t('up.bulk.fmtName')}.jpg
+          </code>
+          {t('up.bulk.fmt2')}
         </div>
       </div>
 
       {unsorted.length > 0 && (
         <div className="card panel">
           <div className="panel-head">
-            <h3>待分拣</h3>
+            <h3>{t('up.unsorted')}</h3>
             <Badge tone="warning">{unsorted.length}</Badge>
           </div>
           {unsorted.map((u, i) => (
@@ -315,10 +323,10 @@ export default function Upload({ arg }) {
                 <div className="xs warning-text">{u.why}</div>
               </div>
               <select className="input" value={u.angle} onChange={(e) => setUnsorted(unsorted.map((x, k) => (k === i ? { ...x, angle: e.target.value } : x)))}>
-                <option value="">选择角度</option>
+                <option value="">{t('up.pickAngle')}</option>
                 {meta.angles.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.label}
+                    {tx(a.label)}
                   </option>
                 ))}
               </select>
@@ -330,7 +338,7 @@ export default function Upload({ arg }) {
                   setUnsorted(unsorted.filter((_, k) => k !== i));
                 }}
               >
-                上传
+                {t('up.upload')}
               </Button>
             </div>
           ))}
@@ -340,10 +348,8 @@ export default function Upload({ arg }) {
       {jobs.length > 0 && (
         <div className="card panel">
           <div className="panel-head">
-            <h3>上传队列</h3>
-            <span className="xs muted">
-              {jobs.filter((j) => j.ok).length}/{jobs.length} 完成
-            </span>
+            <h3>{t('up.queue')}</h3>
+            <span className="xs muted">{t('up.queue.done', { ok: jobs.filter((j) => j.ok).length, n: jobs.length })}</span>
           </div>
           {jobs.map((j) => (
             <div key={j.id} className="job">
@@ -373,7 +379,7 @@ export default function Upload({ arg }) {
                     j.retry();
                   }}
                 >
-                  重试
+                  {t('common.retry')}
                 </Button>
               )}
             </div>
@@ -384,9 +390,9 @@ export default function Upload({ arg }) {
         <div className="panel-head">
           <h3 className="row" style={{ gap: 6 }}>
             <Archive size={15} />
-            已归档原片
+            {t('up.archive')}
           </h3>
-          <span className="xs muted">{d.sources.length} 张 · 只读存档</span>
+          <span className="xs muted">{t('up.archive.n', { n: d.sources.length })}</span>
         </div>
         {d.sources.length ? (
           <div className="archive">
@@ -398,13 +404,13 @@ export default function Upload({ arg }) {
             ))}
           </div>
         ) : (
-          <div className="sm muted">还没有原片。拍下第一张后，系统会自动开始出图。</div>
+          <div className="sm muted">{t('up.archive.empty')}</div>
         )}
       </div>
       {nextMissing && (
         <div className="sticky-cta">
           <Button variant="primary" size="lg" icon={Camera} onClick={() => pickRef.current[nextMissing].click()}>
-            拍摄下一个：{short(meta.angles.find((a) => a.id === nextMissing)?.label)}
+            {t('up.next', { label: short(meta.angles.find((a) => a.id === nextMissing)?.label) })}
           </Button>
         </div>
       )}

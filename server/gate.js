@@ -4,6 +4,7 @@
 // When no password is configured the gate is off (only for a trusted machine / LAN).
 import crypto from 'node:crypto';
 import { config, log } from './config.js';
+import { t, pickLang } from '../shared/i18n/index.js';
 
 const COOKIE = 'wb_session';
 const MAX_AGE = 30 * 24 * 3600;
@@ -40,11 +41,21 @@ function limited(ip) {
   if (attempts.size > 10000) for (const [k, v] of attempts) if (!v.length || now - v[v.length - 1] > WINDOW_MS) attempts.delete(k); // bound memory
   return a.length >= MAX_FAILS;
 }
-export const _test = { tokenFor, safeEq, safeNext, parseCookies };
+// Login page language: ?lang= → wb_lang cookie (set by the web app) → Accept-Language → English.
+const reqLang = (req) =>
+  pickLang([
+    req.query?.lang,
+    parseCookies(req.headers.cookie).wb_lang,
+    ...String(req.headers['accept-language'] || '')
+      .split(',')
+      .map((s) => s.split(';')[0].trim()),
+  ]) || 'en';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+export const _test = { tokenFor, safeEq, safeNext, parseCookies, reqLang };
 
-const page = (err = '', next = '/') => `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+const page = (lang, err = '', next = '/') => `<!doctype html><html lang="${lang === 'zh' ? 'zh-CN' : lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#F7F5F2">
-<title>登录 · 商品图工作台</title><style>
+<title>${t(lang, 'gate.title')}</title><style>
 *{box-sizing:border-box;margin:0}html,body{height:100%}
 body{font-family:'Inter Variable',Inter,'PingFang SC','Noto Sans SC','Noto Sans CJK SC','Microsoft YaHei',system-ui,sans-serif;background:#F7F5F2;color:#1C1917;-webkit-font-smoothing:antialiased;
 display:flex;align-items:center;justify-content:center;padding:24px 20px calc(24px + env(safe-area-inset-bottom));
@@ -57,14 +68,15 @@ input{width:100%;height:50px;border:1px solid #E0D9D0;border-radius:12px;padding
 input:focus{border-color:#9E4A5E;box-shadow:0 0 0 4px rgba(158,74,94,.12);background:#fff}
 button{margin-top:16px;width:100%;height:50px;border:0;border-radius:12px;background:#9E4A5E;color:#fff;font-size:16px;font-weight:650;font-family:inherit;cursor:pointer;box-shadow:0 6px 16px rgba(158,74,94,.28)}
 button:active{background:#8A3F51}.err{margin-top:14px;padding:10px 12px;border-radius:10px;background:#FDECEC;color:#B42318;font-size:13.5px;border:1px solid #F6CACA}
-.foot{margin-top:20px;font-size:12px;color:#A8A29E;text-align:center;line-height:1.6}
+.foot{margin-top:20px;font-size:12px;color:#A8A29E;text-align:center;line-height:1.6}.foot a{color:#78716C;text-decoration:none;margin:0 6px}.foot a.on{color:#9E4A5E;font-weight:600}
 </style></head><body><main class="card">
 <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 14.06 4 20M14.06 9.94 20 4M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4"/></svg></div>
-<h1>商品图工作台</h1><p class="sub">Amazon · 护肤 ｜ 内部测试版，请输入访问密码</p>
-<form method="post" action="/login"><input type="hidden" name="next" value="${String(next).replace(/"/g, '&quot;')}">
-<label for="pw">访问密码</label><input id="pw" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" autofocus required>
-${err ? `<div class="err">${err}</div>` : ''}<button type="submit">进入工作台</button></form>
-<p class="foot">登录后 30 天内免登录 · 密码由管理员提供</p></main></body></html>`;
+<h1>${t(lang, 'app.name')}</h1><p class="sub">${t(lang, 'gate.sub')}</p>
+<form method="post" action="/login"><input type="hidden" name="next" value="${esc(next)}">
+<label for="pw">${t(lang, 'gate.label')}</label><input id="pw" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" autofocus required>
+${err ? `<div class="err">${t(lang, err)}</div>` : ''}<button type="submit">${t(lang, 'gate.submit')}</button></form>
+<p class="foot">${t(lang, 'gate.foot')}</p>
+<p class="foot"><a href="/login?lang=zh&next=${encodeURIComponent(next)}" class="${lang === 'zh' ? 'on' : ''}">中文</a>·<a href="/login?lang=en&next=${encodeURIComponent(next)}" class="${lang === 'en' ? 'on' : ''}">English</a></p></main></body></html>`;
 
 export function installGate(app, express, pw = config.accessPassword) {
   if (!pw) {
@@ -77,13 +89,21 @@ export function installGate(app, express, pw = config.accessPassword) {
   const setCookie = (req, res, val, age) =>
     res.setHeader('Set-Cookie', `${COOKIE}=${val}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${req.secure || config.cookieSecure ? '; Secure' : ''}`);
 
-  app.get('/login', (req, res) => (authed(req) ? res.redirect(safeNext(req.query.next)) : res.type('html').send(page('', safeNext(req.query.next)))));
+  app.get('/login', (req, res) => {
+    if (authed(req)) return res.redirect(safeNext(req.query.next));
+    const lang = reqLang(req);
+    if (req.query.lang === lang) res.setHeader('Set-Cookie', `wb_lang=${lang}; Path=/; Max-Age=31536000; SameSite=Lax`);
+    res.type('html').send(page(lang, '', safeNext(req.query.next)));
+  });
   const login = (req, res, asJson) => {
     const ip = req.ip;
     if (limited(ip))
       return asJson
         ? res.status(429).json({ error: '尝试次数过多，请 10 分钟后再试' })
-        : res.status(429).type('html').send(page('尝试次数过多，请 10 分钟后再试'));
+        : res
+            .status(429)
+            .type('html')
+            .send(page(reqLang(req), 'srv.err.tooMany'));
     if (!safeEq(req.body?.password || '', pw)) {
       attempts.get(ip).push(Date.now());
       return asJson
@@ -91,7 +111,7 @@ export function installGate(app, express, pw = config.accessPassword) {
         : res
             .status(401)
             .type('html')
-            .send(page('密码不正确，请重试', safeNext(req.body?.next)));
+            .send(page(reqLang(req), 'srv.err.badPwRetry', safeNext(req.body?.next)));
     }
     attempts.delete(ip);
     setCookie(req, res, token, MAX_AGE);

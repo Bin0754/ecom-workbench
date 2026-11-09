@@ -7,7 +7,7 @@ export default [
   { ignores: ['**/node_modules/**', 'web/dist/**', 'data/**', 'coverage/**'] },
   js.configs.recommended,
   {
-    files: ['server/**/*.js', 'scripts/**/*.mjs', 'test/**/*.{js,mjs}', '*.js', 'web/vite.config.js'],
+    files: ['server/**/*.js', 'shared/**/*.js', 'scripts/**/*.mjs', 'test/**/*.{js,mjs}', '*.js', 'web/vite.config.js'],
     languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: { ...globals.node } },
     rules: {
       'no-unused-vars': ['error', { args: 'none', caughtErrors: 'none' }],

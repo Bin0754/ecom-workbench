@@ -1,6 +1,7 @@
-// 设计系统组件：徽标、按钮、骨架屏、空状态、预检列表、角度示意图、抽屉
+// Design-system components: badges, buttons, skeletons, empty states, precheck list, angle sketches, sheets
 import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, Loader2, X } from 'lucide-react';
+import { t, tx } from './i18n.js';
 
 export function Badge({ tone = 'neutral', icon: I, children, dot, className = '' }) {
   return (
@@ -58,19 +59,19 @@ export function PageHeader({ title, desc, actions, eyebrow }) {
 }
 
 export const STATUS = {
-  generating: ['生成中', 'info'],
-  awaiting: ['待外部出图', 'accent'],
-  failed: ['生成失败', 'danger'],
-  draft: ['草稿', 'neutral'],
-  pending: ['待审核', 'warning'],
-  rejected: ['已打回', 'danger'],
-  approved: ['已通过', 'success'],
-  void: ['已作废', 'neutral'],
+  generating: [t('st.generating'), 'info'],
+  awaiting: [t('st.awaiting'), 'accent'],
+  failed: [t('st.failed'), 'danger'],
+  draft: [t('st.draft'), 'neutral'],
+  pending: [t('st.pending'), 'warning'],
+  rejected: [t('st.rejected'), 'danger'],
+  approved: [t('st.approved'), 'success'],
+  void: [t('st.void'), 'neutral'],
 };
 export function StatusBadge({ status }) {
-  const [l, t] = STATUS[status] || ['未生成', 'neutral'];
+  const [l, tone] = STATUS[status] || [t('st.none'), 'neutral'];
   return (
-    <Badge tone={t} dot>
+    <Badge tone={tone} dot>
       {l}
     </Badge>
   );
@@ -86,16 +87,16 @@ export const PRODUCT_TONE = {
   done: 'success',
 };
 const LV = {
-  pass: { I: CheckCircle2, tone: 'success', label: '通过' },
-  warn: { I: AlertTriangle, tone: 'warning', label: '提醒' },
-  fail: { I: XCircle, tone: 'danger', label: '不合规' },
+  pass: { I: CheckCircle2, tone: 'success', label: t('pc.pass') },
+  warn: { I: AlertTriangle, tone: 'warning', label: t('pc.warn') },
+  fail: { I: XCircle, tone: 'danger', label: t('pc.fail') },
 };
 export function PrecheckBadge({ pc }) {
   if (!pc) return null;
   const v = LV[pc.overall];
   return (
     <Badge tone={v.tone} icon={v.I}>
-      预检{v.label}
+      {t('pc.badge', { level: v.label })}
     </Badge>
   );
 }
@@ -108,7 +109,7 @@ export function Precheck({ pc, compact }) {
         <div className="check pass">
           <CheckCircle2 size={16} />
           <div>
-            <b>全部检查通过</b>
+            <b>{t('pc.allPass')}</b>
           </div>
         </div>
       )}
@@ -118,8 +119,8 @@ export function Precheck({ pc, compact }) {
           <div key={k} className={'check ' + i.level}>
             <v.I size={16} strokeWidth={2} />
             <div>
-              <b>{i.label}</b>
-              <span>{i.detail}</span>
+              <b>{tx(i.label)}</b>
+              <span>{tx(i.detail)}</span>
             </div>
           </div>
         );
@@ -134,7 +135,7 @@ export function Sheet({ open, onClose, title, children, footer, wide }) {
       <div className={'sheet' + (wide ? ' wide' : '')} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <div className="sheet-head">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="关闭">
+          <button className="icon-btn" onClick={onClose} aria-label={t('ui.close')}>
             <X size={18} />
           </button>
         </div>
@@ -152,7 +153,7 @@ export function Progress({ value, tone = 'accent', label }) {
   );
 }
 
-// 拍摄角度示意线稿：给不懂 AI 的摄影一个直观的构图参考
+// Angle line sketches: an intuitive framing reference for photographers
 export function AngleGlyph({ angle, size = 56 }) {
   const s = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' };
   const bottle = (t = '') => (
@@ -232,16 +233,16 @@ export function AngleGlyph({ angle, size = 56 }) {
 }
 export const LevelIcon = { info: Info };
 
-// ---------- 分段提示词编辑器（## 段名 分段；可整段或逐段编辑） ----------
+// ---------- Sectioned prompt editor ("## Section" headings; edit per section or as a whole) ----------
 const SEC_CN = {
-  PURPOSE: '用途',
-  SUBJECT: '商品（锁定）',
-  'SCENE & SET': '场景与布景',
-  CAMERA: '机位',
-  LIGHTING: '布光',
-  COMPOSITION: '构图与留白',
-  STYLE: '风格',
-  'HARD CONSTRAINTS': '硬约束（系统追加）',
+  PURPOSE: t('ui.sec.purpose'),
+  SUBJECT: t('ui.sec.subject'),
+  'SCENE & SET': t('ui.sec.scene'),
+  CAMERA: t('ui.sec.camera'),
+  LIGHTING: t('ui.sec.lighting'),
+  COMPOSITION: t('ui.sec.composition'),
+  STYLE: t('ui.sec.style'),
+  'HARD CONSTRAINTS': t('ui.sec.hard'),
 };
 export const PROMPT_VARS = [
   'name',
@@ -293,14 +294,15 @@ export function PromptEditor({ value, onChange, hint }) {
     <div className="pe">
       <div className="pe-head">
         <span className="label">
-          提示词<em>{hint || '变量 {…} 发送前自动替换'}</em>
+          {t('ui.prompt')}
+          <em>{hint || t('ui.prompt.hint')}</em>
         </span>
         <div className="seg sm">
           <button type="button" className={mode === 'sections' ? 'on' : ''} onClick={() => setMode('sections')}>
-            分段
+            {t('ui.prompt.sections')}
           </button>
           <button type="button" className={mode === 'raw' ? 'on' : ''} onClick={() => setMode('raw')}>
-            整段
+            {t('ui.prompt.raw')}
           </button>
         </div>
       </div>
@@ -311,7 +313,7 @@ export function PromptEditor({ value, onChange, hint }) {
           {secs.map((s, i) => (
             <label key={i} className="pe-sec">
               <span className="pe-name">
-                {SEC_CN[s.name] || s.name || '前言'}
+                {SEC_CN[s.name] || s.name || t('ui.prompt.preamble')}
                 <i>{s.name}</i>
               </span>
               <textarea rows={Math.min(8, Math.max(2, Math.ceil(s.body.length / 58)))} value={s.body} onChange={(e) => setSec(i, e.target.value)} />
@@ -320,7 +322,7 @@ export function PromptEditor({ value, onChange, hint }) {
         </div>
       )}
       <details className="pe-vars">
-        <summary>可用变量（{PROMPT_VARS.length}）</summary>
+        <summary>{t('ui.prompt.vars', { n: PROMPT_VARS.length })}</summary>
         <div>
           {PROMPT_VARS.map((v) => (
             <code key={v}>{`{${v}}`}</code>
@@ -334,7 +336,7 @@ export function PromptPreview({ text }) {
   const secs = splitPrompt(text || '');
   return (
     <details className="pp">
-      <summary>实际发送给模型的完整提示词（{(text || '').split(/\s+/).filter(Boolean).length} 词）</summary>
+      <summary>{t('ui.prompt.full', { n: (text || '').split(/\s+/).filter(Boolean).length })}</summary>
       <div className="pp-body">
         {secs.map((s, i) => (
           <div key={i} className={'pp-sec' + (s.name === 'HARD CONSTRAINTS' ? ' sys' : '')}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Search, Camera, Workflow, Package, ImageOff, Clock, CheckCircle2, Hourglass, ClipboardList } from 'lucide-react';
 import { api } from '../api.js';
 import { useApp, go } from '../App.jsx';
+import { t, tx } from '../i18n.js';
 import { Badge, Button, Empty, PageHeader, Progress, Sheet, SkeletonList, PRODUCT_TONE } from '../ui.jsx';
 
 const EMPTY = {
@@ -24,11 +25,11 @@ const EMPTY = {
   audience: '',
 };
 const FILTERS = [
-  ['all', '全部'],
-  ['todo', '待拍摄'],
-  ['active', '进行中'],
-  ['review', '待审核'],
-  ['done', '已入库'],
+  ['all', t('tasks.f.all')],
+  ['todo', t('tasks.f.todo')],
+  ['active', t('tasks.f.active')],
+  ['review', t('tasks.f.review')],
+  ['done', t('tasks.f.done')],
 ];
 const match = (f, code) => f === 'all' || (f === 'active' ? ['uploaded', 'generating', 'refine', 'rejected', 'partial'].includes(code) : code === f);
 
@@ -45,15 +46,15 @@ export default function Tasks() {
       .catch((e) => notify(e.message, true));
   useEffect(() => {
     load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
   }, []);
   const canCreate = role === 'admin' || role === 'designer';
   const save = async () => {
     setSaving(true);
     try {
       await api('/api/products', { method: 'POST', body: form });
-      notify('任务单已创建');
+      notify(t('tasks.created'));
       setForm(null);
       load();
     } catch (e) {
@@ -88,13 +89,13 @@ export default function Tasks() {
   return (
     <div className="fade-in">
       <PageHeader
-        eyebrow="工作区"
-        title="拍摄任务单"
-        desc="每个款号一张任务单：摄影按角度拍照上传，系统自动出图，审核通过后进入素材库。"
+        eyebrow={t('side.workspace')}
+        title={t('tasks.title')}
+        desc={t('tasks.desc')}
         actions={
           canCreate && (
             <Button variant="primary" icon={Plus} onClick={() => setForm({ ...EMPTY, angles: [...meta.defaultAngles] })}>
-              新建任务单
+              {t('tasks.new')}
             </Button>
           )
         }
@@ -104,28 +105,28 @@ export default function Tasks() {
           <div className="card stat">
             <div className="k">
               <Package size={14} />
-              款号
+              {t('tasks.stat.sku')}
             </div>
             <div className="v">{all.length}</div>
           </div>
           <div className="card stat">
             <div className="k">
               <Camera size={14} />
-              已拍原片
+              {t('tasks.stat.sources')}
             </div>
             <div className="v">{sum('sourceCount')}</div>
           </div>
           <div className="card stat">
             <div className="k">
               <Hourglass size={14} />
-              待审核图片
+              {t('tasks.stat.pending')}
             </div>
             <div className="v">{sum('pendingCount')}</div>
           </div>
           <div className="card stat">
             <div className="k">
               <CheckCircle2 size={14} />
-              已入库图片
+              {t('tasks.stat.approved')}
             </div>
             <div className="v">{sum('approvedCount')}</div>
           </div>
@@ -134,7 +135,7 @@ export default function Tasks() {
       <div className="toolbar">
         <div className="search">
           <Search size={16} />
-          <input className="input" placeholder="搜索款号、ASIN 或品名" value={kw} onChange={(e) => setKw(e.target.value)} />
+          <input className="input" placeholder={t('tasks.search')} value={kw} onChange={(e) => setKw(e.target.value)} />
         </div>
         <div className="seg">
           {FILTERS.map(([k, l]) => (
@@ -151,32 +152,32 @@ export default function Tasks() {
         <div className="card">
           <Empty
             icon={ClipboardList}
-            title="还没有任务单"
+            title={t('tasks.empty.title')}
             action={
               canCreate && (
                 <Button variant="primary" icon={Plus} onClick={() => setForm({ ...EMPTY, angles: [...meta.defaultAngles] })}>
-                  新建第一张任务单
+                  {t('tasks.empty.cta')}
                 </Button>
               )
             }
           >
-            先建任务单，填好款号、ASIN 和必拍角度。摄影打开手机就能按单拍摄上传。
+            {t('tasks.empty.desc')}
           </Empty>
         </div>
       ) : !list.length ? (
         <div className="card">
-          <Empty icon={Search} title="没有符合条件的款号">
-            换个关键词，或切回「全部」。
+          <Empty icon={Search} title={t('tasks.nomatch.title')}>
+            {t('tasks.nomatch.desc')}
           </Empty>
         </div>
       ) : (
         <>
           <div className="task-head">
             <span />
-            <span>款号 / 品名</span>
-            <span>拍摄进度</span>
-            <span>出图审核</span>
-            <span>状态</span>
+            <span>{t('tasks.col.sku')}</span>
+            <span>{t('tasks.col.shoot')}</span>
+            <span>{t('tasks.col.review')}</span>
+            <span>{t('tasks.col.status')}</span>
             <span />
           </div>
           <div className="task-list">
@@ -192,7 +193,7 @@ export default function Tasks() {
                       <span className="desktop-only" />
                       <span className="mobile-only">
                         <Badge tone={PRODUCT_TONE[r.status.code]} dot>
-                          {r.status.label}
+                          {tx(r.status.label)}
                         </Badge>
                       </span>
                     </div>
@@ -201,20 +202,20 @@ export default function Tasks() {
                       {r.name_zh ? ` · ${r.name_zh}` : ''}
                     </div>
                     <div className="task-meta">
-                      <span className="mono">{r.asin || '未填 ASIN'}</span>
+                      <span className="mono">{r.asin || t('tasks.noAsin')}</span>
                       {r.due_date && (
                         <span className="row" style={{ gap: 4 }}>
                           <Clock size={12} />
                           {r.due_date}
                         </span>
                       )}
-                      {r.photographer && <span>摄影 {r.photographer}</span>}
+                      {r.photographer && <span>{t('tasks.photographer', { name: r.photographer })}</span>}
                     </div>
                   </div>
                   <div className="task-progress">
                     <div className="metric">
                       <div className="mk">
-                        <span>拍摄</span>
+                        <span>{t('tasks.m.shot')}</span>
                         <b>
                           {shot}/{need}
                         </b>
@@ -222,13 +223,17 @@ export default function Tasks() {
                       <Progress value={shot / need} tone={shot === need ? 'success' : 'accent'} />
                       {r.status.missing?.length > 0 && (
                         <div className="missing ellipsis">
-                          缺 {r.status.missing.map((a) => meta.angles.find((x) => x.id === a)?.label.replace(/（.*）/, '')).join('、')}
+                          {t('tasks.missing', {
+                            list: r.status.missing
+                              .map((a) => tx(meta.angles.find((x) => x.id === a)?.label || a).replace(/（.*）| \(.*\)/, ''))
+                              .join(t('common.listSep')),
+                          })}
                         </div>
                       )}
                     </div>
                     <div className="metric">
                       <div className="mk">
-                        <span>已通过</span>
+                        <span>{t('tasks.m.approved')}</span>
                         <b>
                           {r.approvedCount}/{r.nodeCount || '–'}
                         </b>
@@ -236,25 +241,25 @@ export default function Tasks() {
                       <Progress value={r.nodeCount ? r.approvedCount / r.nodeCount : 0} tone="success" />
                       {r.pendingCount > 0 && (
                         <div className="missing" style={{ color: 'var(--text-3)' }}>
-                          {r.pendingCount} 张待审核
+                          {t('tasks.m.pending', { n: r.pendingCount })}
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="desktop-only">
                     <Badge tone={PRODUCT_TONE[r.status.code]} dot>
-                      {r.status.label}
+                      {tx(r.status.label)}
                     </Badge>
                   </div>
                   <div className="task-actions">
                     {(role === 'photographer' || role === 'admin') && (
                       <Button size="sm" variant={role === 'photographer' ? 'primary' : 'secondary'} icon={Camera} onClick={() => go('upload/' + r.id)}>
-                        拍照上传
+                        {t('tasks.btn.upload')}
                       </Button>
                     )}
                     {(role === 'designer' || role === 'admin') && (
                       <Button size="sm" icon={Workflow} onClick={() => go('canvas/' + r.id)}>
-                        打开画布
+                        {t('tasks.btn.canvas')}
                       </Button>
                     )}
                   </div>
@@ -267,15 +272,15 @@ export default function Tasks() {
       <Sheet
         open={!!form}
         onClose={() => setForm(null)}
-        title="新建任务单"
+        title={t('tasks.new')}
         wide
         footer={
           <>
             <Button variant="ghost" onClick={() => setForm(null)}>
-              取消
+              {t('common.cancel')}
             </Button>
             <Button variant="primary" loading={saving} onClick={save}>
-              创建任务单
+              {t('tasks.create')}
             </Button>
           </>
         }
@@ -283,41 +288,43 @@ export default function Tasks() {
         {form && (
           <>
             <div className="form-section">
-              <h3>基本信息</h3>
-              <p>款号和英文品名必填。ASIN 用于亚马逊导出命名。</p>
+              <h3>{t('tasks.form.basic')}</h3>
+              <p>{t('tasks.form.basic.desc')}</p>
               <div className="grid-2">
-                {F('sku', '款号', { ph: '如 LUMA-VC30', upper: true, hint: '必填' })}
-                {F('asin', 'ASIN', { ph: 'B0XXXXXXXX', upper: true, hint: '10 位' })}
-                {F('name', '英文品名', { ph: 'LUMA Vitamin C Serum', hint: '上图用' })}
-                {F('name_zh', '中文品名', { ph: '维C精华' })}
-                {F('brand', '品牌', { ph: 'LUMA' })}
-                {F('size_spec', '容量规格', { ph: '30 ml / 1 fl oz' })}
+                {F('sku', t('tasks.form.sku'), { ph: t('tasks.form.sku.ph'), upper: true, hint: t('tasks.form.required') })}
+                {F('asin', 'ASIN', { ph: 'B0XXXXXXXX', upper: true, hint: t('tasks.form.asin.hint') })}
+                {F('name', t('tasks.form.name'), { ph: 'LUMA Vitamin C Serum', hint: t('tasks.form.name.hint') })}
+                {F('name_zh', t('tasks.form.nameZh'), { ph: t('tasks.form.nameZh.ph') })}
+                {F('brand', t('tasks.form.brand'), { ph: 'LUMA' })}
+                {F('size_spec', t('tasks.form.size'), { ph: '30 ml / 1 fl oz' })}
               </div>
-              {F('dimensions', '外形尺寸', { ph: 'H 10.5 cm × Ø 3.4 cm', hint: '用于尺寸图' })}
+              {F('dimensions', t('tasks.form.dims'), { ph: 'H 10.5 cm × Ø 3.4 cm', hint: t('tasks.form.dims.hint') })}
               <div className="grid-2">
                 <label className="field">
                   <span className="label">
-                    品类形态<em>决定质地图和提示词</em>
+                    {t('tasks.form.ptype')}
+                    <em>{t('tasks.form.ptype.hint')}</em>
                   </span>
                   <select value={form.product_type || ''} onChange={(e) => setForm({ ...form, product_type: e.target.value })}>
-                    <option value="">自动识别（按品名）</option>
+                    <option value="">{t('tasks.form.ptype.auto')}</option>
                     {Object.entries(meta.productTypes || {}).map(([k, v]) => (
                       <option key={k} value={k}>
-                        {v}
+                        {tx(v)}
                       </option>
                     ))}
                   </select>
                 </label>
-                {F('brand_colors', '品牌色', { ph: 'amber glass, warm white', hint: '可选' })}
+                {F('brand_colors', t('tasks.form.colors'), { ph: 'amber glass, warm white', hint: t('tasks.form.optional') })}
               </div>
-              {F('audience', '目标人群', { ph: 'adults 25-45, minimalist routine', hint: '可选，英文' })}
+              {F('audience', t('tasks.form.audience'), { ph: 'adults 25-45, minimalist routine', hint: t('tasks.form.optionalEn') })}
             </div>
             <div className="form-section">
-              <h3>拍摄要求</h3>
-              <p>摄影只需在手机上点对应角度拍照，文件名和批次自动生成。</p>
+              <h3>{t('tasks.form.shoot')}</h3>
+              <p>{t('tasks.form.shoot.desc')}</p>
               <div className="field">
                 <span className="label">
-                  必拍角度<em>已选 {form.angles.length} 个</em>
+                  {t('tasks.form.angles')}
+                  <em>{t('tasks.form.angles.n', { n: form.angles.length })}</em>
                 </span>
                 <div className="chips">
                   {meta.angles.map((a) => {
@@ -329,25 +336,29 @@ export default function Tasks() {
                         className={'chip' + (on ? ' on' : '')}
                         onClick={() => setForm({ ...form, angles: on ? form.angles.filter((x) => x !== a.id) : [...form.angles, a.id] })}
                       >
-                        {a.label}
+                        {tx(a.label)}
                       </button>
                     );
                   })}
                 </div>
               </div>
               <div className="grid-2">
-                {F('due_date', '截止日期', { type: 'date' })}
-                {F('photographer', '指派摄影', { ph: '小王' })}
+                {F('due_date', t('tasks.form.due'), { type: 'date' })}
+                {F('photographer', t('tasks.form.assign'), { ph: t('tasks.form.assign.ph') })}
               </div>
-              {F('notes', '拍摄注意事项', { area: true, rows: 2, ph: '保留标签正面、避免瓶身反光' })}
+              {F('notes', t('tasks.form.notes'), { area: true, rows: 2, ph: t('tasks.form.notes.ph') })}
             </div>
             <div className="form-section">
-              <h3>上图文案（英文）</h3>
-              <p>排版引擎直接使用这些内容，并会做 FDA / 亚马逊宣称合规检查。</p>
-              {F('ingredients', '核心成分', { area: true, ph: 'Vitamin C 15%|Helps skin look brighter', hint: '每行：成分|说明' })}
-              {F('benefits', '卖点', { area: true, ph: 'Visibly brighter-looking skin', hint: '每行一条' })}
-              {F('usage_steps', '使用步骤', { area: true, hint: '每行一步' })}
-              {F('box_contents', '包装内容', { area: true, rows: 2, hint: '每行一项' })}
+              <h3>{t('tasks.form.copy')}</h3>
+              <p>{t('tasks.form.copy.desc')}</p>
+              {F('ingredients', t('tasks.form.ingredients'), {
+                area: true,
+                ph: 'Vitamin C 15%|Helps skin look brighter',
+                hint: t('tasks.form.ingredients.hint'),
+              })}
+              {F('benefits', t('tasks.form.benefits'), { area: true, ph: 'Visibly brighter-looking skin', hint: t('tasks.form.perLine') })}
+              {F('usage_steps', t('tasks.form.usage'), { area: true, hint: t('tasks.form.perStep') })}
+              {F('box_contents', t('tasks.form.box'), { area: true, rows: 2, hint: t('tasks.form.perItem') })}
             </div>
           </>
         )}

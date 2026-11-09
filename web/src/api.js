@@ -1,4 +1,5 @@
-// 前端 API 封装：带角色头；上传用 XHR 以便显示进度并自动重试
+// API helpers: role headers; uploads use XHR for progress and automatic retries. Server errors are translated with tx().
+import { t, tx } from './i18n.js';
 export const session = {
   get role() {
     return localStorage.getItem('wb.role') || 'photographer';
@@ -24,9 +25,9 @@ export async function api(path, opts = {}) {
   const data = await res.json().catch(() => ({}));
   if (res.status === 401) {
     location.href = '/login?next=' + encodeURIComponent(location.pathname + location.hash);
-    throw new Error('请先登录');
+    throw new Error(t('api.login'));
   }
-  if (!res.ok) throw new Error(data.error || `请求失败 ${res.status}`);
+  if (!res.ok) throw new Error(tx(data.error) || t('api.failed', { status: res.status }));
   return data;
 }
 
@@ -34,7 +35,7 @@ export async function api(path, opts = {}) {
 export async function uploadRaw(url, file) {
   const res = await fetch(url, { method: 'POST', headers: { ...headers(), 'Content-Type': file.type || 'application/octet-stream' }, body: file });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `上传失败 ${res.status}`);
+  if (!res.ok) throw new Error(tx(data.error) || t('api.uploadFailed', { status: res.status }));
   return data;
 }
 
@@ -50,10 +51,12 @@ export function uploadXHR(url, form, { method = 'POST', onProgress, retries = 3 
         try {
           d = JSON.parse(xhr.responseText);
         } catch {}
-        xhr.status < 300 ? resolve(d) : reject(Object.assign(new Error(d.error || `上传失败 ${xhr.status}`), { fatal: xhr.status < 500 }));
+        xhr.status < 300
+          ? resolve(d)
+          : reject(Object.assign(new Error(tx(d.error) || t('api.uploadFailed', { status: xhr.status })), { fatal: xhr.status < 500 }));
       };
-      xhr.onerror = () => reject(new Error('网络中断'));
-      xhr.ontimeout = () => reject(new Error('上传超时'));
+      xhr.onerror = () => reject(new Error(t('api.network')));
+      xhr.ontimeout = () => reject(new Error(t('api.timeout')));
       xhr.timeout = 10 * 60 * 1000;
       xhr.send(form);
     });
@@ -62,7 +65,7 @@ export function uploadXHR(url, form, { method = 'POST', onProgress, retries = 3 
       return await attempt(n);
     } catch (e) {
       if (e.fatal || n >= retries) throw e;
-      onProgress?.(0, `网络不稳，${n * 2} 秒后第 ${n + 1} 次重试…`);
+      onProgress?.(0, t('api.retry', { sec: n * 2, n: n + 1 }));
       await new Promise((r) => setTimeout(r, n * 2000));
       return go(n + 1);
     }
@@ -70,7 +73,7 @@ export function uploadXHR(url, form, { method = 'POST', onProgress, retries = 3 
   return go(1);
 }
 
-// 客户端压缩：长边缩到 maxEdge，JPEG 质量 q；按 EXIF 方向转正
+// Client-side compression: long edge to maxEdge, JPEG quality q, EXIF orientation applied
 export async function compressImage(file, maxEdge = 2000, q = 0.85) {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const k = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
@@ -83,13 +86,3 @@ export async function compressImage(file, maxEdge = 2000, q = 0.85) {
 }
 
 export const fmtBytes = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB');
-export const STATUS = {
-  generating: ['生成中', 'blue'],
-  failed: ['生成失败', 'red'],
-  draft: ['草稿', 'gray'],
-  pending: ['待审核', 'amber'],
-  rejected: ['已打回', 'red'],
-  approved: ['已通过', 'green'],
-  void: ['已作废', 'gray'],
-};
-export const LEVEL = { pass: ['通过', 'green'], warn: ['注意', 'amber'], fail: ['不合规', 'red'] };

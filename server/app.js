@@ -549,7 +549,13 @@ export function createApp() {
         run('INSERT INTO downloads(product_id,output_id,kind,operator) VALUES(?,?,?,?)', p.id, o.id, 'amazon-zip', who(req));
       }
       zip.append(csv.join('\n'), { name: 'manifest.csv' });
-      if (!p.asin) zip.append('该款未填写 ASIN，文件名暂用款号代替，上传亚马逊前请改为 ASIN。\n', { name: 'README_缺少ASIN.txt' });
+      if (!p.asin)
+        zip.append(
+          '该款未填写 ASIN，文件名暂用款号代替，上传亚马逊前请改为 ASIN。\nNo ASIN set for this SKU: files are named with the SKU instead. Rename them to the ASIN before uploading to Amazon.\n',
+          {
+            name: 'README_MISSING_ASIN.txt',
+          },
+        );
       await zip.finalize();
     }),
   );

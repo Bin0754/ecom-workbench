@@ -20,6 +20,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 COPY server ./server
 COPY scripts ./scripts
+COPY shared ./shared
 COPY --from=build /app/web/dist ./web/dist
 RUN mkdir -p /data && chown node:node /data
 USER node
