@@ -1,6 +1,11 @@
 # Ecom Workbench · 商品图工作台
 
-[English](README.md) | **简体中文**
+[![CI](https://github.com/Bin0754/ecom-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/Bin0754/ecom-workbench/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Bin0754/ecom-workbench)](LICENSE)
+![Node ≥ 22.13](https://img.shields.io/badge/node-%E2%89%A5%2022.13-339933?logo=node.js&logoColor=white)
+![UI: English / 中文](https://img.shields.io/badge/UI-English%20%2F%20%E4%B8%AD%E6%96%87-9E4A5E)
+
+[English](README.md) | **简体中文** · **[使用教程](docs/GUIDE.zh-CN.md)** · [User guide](docs/GUIDE.md)
 
 一个可自部署的**亚马逊商品图工作台**（内置护肤品模板包）。
 摄影用手机拍完直接上传，系统自动铺好**无限画布**，把每张原片做成整套亚马逊图片：纯白底主图、成分 / 质地 / 功效信息图、
@@ -8,11 +13,25 @@
 
 ![生成示例（背景由生图模型生成，商品像素与全部文字由程序合成）](docs/images/gallery.jpg)
 
-> 商品本身**不让模型重画**：抠图后的原图商品逐像素贴回，所有文字由排版引擎叠加——标签、logo、颜色与原片一致。
-
 | 无限画布（电脑） | 手机审核 | 手机拍摄上传 |
 |---|---|---|
 | ![画布](docs/images/desktop-canvas.png) | ![审核](docs/images/mobile-review.png) | ![上传](docs/images/mobile-upload.png) |
+
+| 节点面板与提示词编辑 | 素材库（亚马逊命名） |
+|---|---|
+| ![节点面板](docs/images/guide/zh/canvas-inspector.webp) | ![素材库](docs/images/guide/zh/library.webp) |
+
+## 30 秒看懂
+
+1. **建单**——每个款号一张拍摄任务单：ASIN、必拍角度、英文文案。
+2. **拍摄**——摄影在手机上点角度格子拍照，立即开始上传。
+3. **出图**——本地抠图，自动在画布上铺好 11 个亚马逊模板。模型只画**背景**，真实商品逐像素贴回，所有文字由程序渲染，
+   标签、logo、颜色与原片一致。
+4. **预检**——AI 预检检查尺寸、纯白底、85% 占比和 FDA / 亚马逊风险宣称（如 "treats eczema"）。
+5. **审核**——右滑通过，左滑选原因打回；美工修改后重新提交。
+6. **导出**——每个款号一个 zip：`ASIN.MAIN.jpg`、`ASIN.PT01.jpg`…、`APLUS/…`、`manifest.csv`。
+
+开箱免费（模拟通道）；可接入 OpenAI、任意 HTTP 生图 API、本地 ComfyUI，或把在 Grok / ChatGPT / Midjourney 里生成的图手动导入。
 
 ## 功能
 
@@ -25,29 +44,30 @@
 - **审核流**：右滑通过、左滑打回并选原因标签；打回的图回到美工，重新提交时审核能对比上一版。
 - **素材库与导出**：一键 ZIP，`ASIN.MAIN.jpg`、`ASIN.PT01.jpg`、`APLUS/ASIN.APLUS_HEADER_970x600.jpg` + `manifest.csv`。
 - **可插拔模型通道**：OpenAI GPT Image、fal.ai、任意 HTTP API（无需写代码）、本地 ComfyUI 工作流、外部导入队列、免费模拟通道；每次调用记成本流水。
+- **中英文界面**：默认跟随浏览器语言，可随时切换（`?lang=zh` / `?lang=en`）。
 - **移动端适配**：除画布外所有页面都能在手机上用。
 
 ## 快速开始
 
-需要 **Node.js ≥ 22.13**（使用内置 `node:sqlite`）。不需要数据库服务器，不需要 GPU。
+需要 **Node.js ≥ 22.13**（使用内置 `node:sqlite`）。不需要数据库服务器、GPU 或 API key。
 
 ```bash
 git clone https://github.com/Bin0754/ecom-workbench.git && cd ecom-workbench
-cp .env.example .env          # 可选：设置访问密码 WB_ACCESS_PASSWORD、模型密钥等
-npm install                   # 会同时安装 web/ 的依赖
-npm run build && npm start    # → http://localhost:5180
-npm run seed                  # （另开终端）导入演示款号和照片，用免费的模拟通道出图
+npm ci                         # 同时安装服务端和 web/ 的依赖
+cp .env.example .env           # 然后编辑 .env：设置 WB_ACCESS_PASSWORD=<足够长的密码>
+npm run build && npm start     # → http://localhost:5180
+npm run seed                   # 另开终端：导入演示款号和照片，用免费的模拟通道出图
 ```
 
-开发热更新：`npm run dev`（API 在 5180 端口自动重启，Vite 在 5173）。
+- **开发：**`npm run dev`（API 在 5180 自动重启，Vite 在 5173 热更新）。
+- **手机访问：**与服务器连同一个 Wi-Fi，打开 `http://<电脑局域网IP>:5180`（查 IP：macOS `ipconfig getifaddr en0`，
+  Windows `ipconfig`，Linux `hostname -I`）。
+- **Docker：**`cp .env.example .env`（设好密码），然后 `docker compose up -d --build`，数据保存在 `workbench-data` 卷。
 
-Docker：
+新节点默认用免费的**模拟**通道，立刻就能走通完整流程（占位背景）。要出真实图片，把 key 写进 `.env`（如 `OPENAI_API_KEY`），
+重启后在**设置**里启用对应通道，并可设置 `WB_DEFAULT_PROVIDER=openai`（或 `comfyui`、`http`，或免费的外部导入 `grok`）。
 
-```bash
-cp .env.example .env && docker compose up -d   # 数据保存在 workbench-data 卷
-```
-
-开箱不需要任何 API key：新节点默认用免费的**模拟**通道，立刻就能走通完整流程（占位背景）。要出真实图片，在设置里启用模型通道，并设置如 `WB_DEFAULT_PROVIDER=openai`（或 `comfyui`、`http`，或免费的外部导入 `grok`）。
+👉 **第一次用？请看分步的[使用教程](docs/GUIDE.zh-CN.md)**——管理员配置、摄影、美工、审核、导出、常见问题。
 
 ## 工作流程
 
@@ -88,7 +108,8 @@ server/
   prompts.js      v2 提示词构建    templates.js 模板包（尺寸/构图/版式）
   compliance.js   宣称合规规则     exporter.js  亚马逊命名、manifest
   providers/      模型适配器：mock · grok(外部导入) · openai · fal · http · comfyui
-web/src/          React 前端（pages/ 下每页一个文件，i18n.js 语言字典）
+web/src/          React 前端（pages/ 下每页一个文件）
+shared/i18n/      中英文界面字典（前端和登录页共用）
 test/             node:test 测试（单元 + API 冒烟）
 ```
 

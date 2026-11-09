@@ -1,6 +1,11 @@
 # Ecom Workbench · 商品图工作台
 
-**English** | [简体中文](README.zh-CN.md)
+[![CI](https://github.com/Bin0754/ecom-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/Bin0754/ecom-workbench/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Bin0754/ecom-workbench)](LICENSE)
+![Node ≥ 22.13](https://img.shields.io/badge/node-%E2%89%A5%2022.13-339933?logo=node.js&logoColor=white)
+![UI: English / 中文](https://img.shields.io/badge/UI-English%20%2F%20%E4%B8%AD%E6%96%87-9E4A5E)
+
+**English** | [简体中文](README.zh-CN.md) · **[User guide](docs/GUIDE.md)** · [使用教程](docs/GUIDE.zh-CN.md)
 
 A self-hosted product-image workbench for **Amazon sellers** (skincare template pack included).
 A photographer shoots on a phone and uploads; the system automatically lays out an **infinite canvas** that turns each
@@ -10,12 +15,27 @@ images land in an asset library that exports Amazon-ready file names.
 
 ![Generated gallery (backgrounds by an image model, product pixels and all text composited by code)](docs/images/gallery.jpg)
 
-> The product itself is **never redrawn** by the model: the original cut-out is pasted back pixel-for-pixel, and all
-> text is rendered by the layout engine — so labels, logos and colors stay true to the photo.
-
 | Infinite canvas (desktop) | Review on a phone | Shoot & upload on a phone |
 |---|---|---|
-| ![canvas](docs/images/desktop-canvas.png) | ![review](docs/images/mobile-review.png) | ![upload](docs/images/mobile-upload.png) |
+| ![canvas](docs/images/guide/en/canvas.webp) | ![review](docs/images/guide/en/m-review.webp) | ![upload](docs/images/guide/en/m-upload.webp) |
+
+| Node inspector & prompt editor | Amazon-ready library |
+|---|---|
+| ![inspector](docs/images/guide/en/canvas-inspector.webp) | ![library](docs/images/guide/en/library.webp) |
+
+## What it does in 30 seconds
+
+1. **Plan** – create a shoot task per SKU: ASIN, required angles, English copy.
+2. **Shoot** – the photographer taps an angle slot on the phone and takes the photo. Upload starts immediately.
+3. **Generate** – the product is cut out locally and 11 Amazon templates are laid out on a canvas. The model only paints
+   the **background**; the real product is pasted back pixel-for-pixel and all text is rendered by code, so labels,
+   logos and colors stay true.
+4. **Check** – an AI precheck flags size, white background, 85 % fill and risky FDA/Amazon claims ("treats eczema"…).
+5. **Review** – swipe right to approve, left to reject with a reason; the designer fixes and resubmits.
+6. **Export** – one ZIP per SKU: `ASIN.MAIN.jpg`, `ASIN.PT01.jpg`…, `APLUS/…`, `manifest.csv`.
+
+Free out of the box (mock channel); plug in OpenAI, any HTTP image API, your local ComfyUI, or import images made in
+Grok/ChatGPT/Midjourney by hand.
 
 ## Features
 
@@ -35,31 +55,33 @@ images land in an asset library that exports Amazon-ready file names.
   and a `manifest.csv`.
 - **Pluggable model adapters** – OpenAI GPT Image, fal.ai, any HTTP API (no code), local ComfyUI workflows,
   an external/manual import queue, and a free mock. Cost ledger per call.
+- **English & Chinese UI** – follows the browser language, switchable any time (`?lang=en` / `?lang=zh`).
 - **Mobile-ready** – every page except the canvas works on a phone.
 
 ## Quick start
 
-Requirements: **Node.js ≥ 22.13** (uses the built-in `node:sqlite`). No database server, no GPU needed.
+Requirements: **Node.js ≥ 22.13** (uses the built-in `node:sqlite`). No database server, no GPU, no API key.
 
 ```bash
 git clone https://github.com/Bin0754/ecom-workbench.git && cd ecom-workbench
-cp .env.example .env          # optional: set WB_ACCESS_PASSWORD, model keys, …
-npm install                   # also installs web/
-npm run build && npm start    # → http://localhost:5180
-npm run seed                  # (in another terminal) demo SKUs + photos, generated with the free mock channel
+npm ci                         # installs the server and web/
+cp .env.example .env           # then edit .env: set WB_ACCESS_PASSWORD=<a long password>
+npm run build && npm start     # → http://localhost:5180
+npm run seed                   # in a 2nd terminal: demo SKUs + photos, generated with the free mock channel
 ```
 
-Development with hot reload: `npm run dev` (API on :5180 with `--watch`, Vite on :5173).
+- **Development:** `npm run dev` (API on :5180 with auto-restart, Vite with hot reload on :5173).
+- **On a phone:** same Wi-Fi as the server, open `http://<computer-LAN-IP>:5180` (find the IP with
+  `ipconfig getifaddr en0` on macOS, `ipconfig` on Windows, `hostname -I` on Linux).
+- **Docker:** `cp .env.example .env` (set the password), then `docker compose up -d --build` — data persists in the
+  `workbench-data` volume.
 
-Docker:
+New nodes use the free **mock** channel, so the whole flow runs instantly with placeholder backgrounds. For real
+images, put a key in `.env` (e.g. `OPENAI_API_KEY`), restart, enable the channel in **Settings**, and optionally set
+`WB_DEFAULT_PROVIDER=openai` (or `comfyui`, `http`, or `grok` for the free external-import workflow).
 
-```bash
-cp .env.example .env && docker compose up -d   # data persists in the "workbench-data" volume
-```
-
-Out of the box no API key is needed: new nodes use the free **mock** channel, so the whole flow runs instantly with
-placeholder backgrounds. For real images, enable a model channel in Settings and set e.g. `WB_DEFAULT_PROVIDER=openai`
-(or `comfyui`, `http`, or `grok` for the free external-import workflow).
+👉 **New here? Follow the step-by-step [User guide](docs/GUIDE.md)** — admin setup, photographer, designer, reviewer,
+export, FAQ.
 
 ## Workflow
 

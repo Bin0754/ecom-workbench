@@ -26,7 +26,7 @@ it), adds shadows and text, and runs the precheck — adapters never need to car
 
 ### `http` – any synchronous JSON API, no code
 
-Settings → 通用 HTTP API:
+Settings → *Generic HTTP API* (通用 HTTP API):
 
 | Field | Example |
 |---|---|
@@ -47,7 +47,7 @@ Queue-style APIs (submit → poll → fetch) need a small custom adapter — see
 ### `comfyui` – local workflows
 
 1. In ComfyUI enable *Dev mode* and use **Save (API Format)** to export your workflow JSON.
-2. Settings → 本地 ComfyUI: paste it into `workflowJson`, set `baseUrl` (default `http://127.0.0.1:8188`).
+2. Settings → *Local ComfyUI* (本地 ComfyUI): paste it into `workflowJson`, set `baseUrl` (default `http://127.0.0.1:8188`).
 3. Map inputs as `"<nodeId>.<inputName>"`:
    - `promptNode` e.g. `6.text` (CLIPTextEncode) — required
    - `imageNode` e.g. `10.image` (LoadImage) — the layout reference is uploaded via `/upload/image`
@@ -69,7 +69,7 @@ any compatible gateway. Both record token/price-table costs in the ledger.
 The server never calls a model. It writes `data/grok_jobs/<outputId>.json` with the full prompt, aspect ratio, crop
 info and a reference PNG, and the output waits in status **awaiting**. Fulfil it with any tool:
 
-- UI: canvas → node → *Versions* → **导入背景图 / Import background** (also download the reference and copy the prompt there)
+- UI: canvas → node → *Versions* → **Import background** (导入背景图) (also download the reference and copy the prompt there)
 - API: `POST /api/grok/import/:outputId` with the image bytes (`Content-Type: image/png|jpeg`)
 - CLI: `python3 scripts/grok_jobs.py list pending` / `prompt <id>` / `import <id> <file>`
 
